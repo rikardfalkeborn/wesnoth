@@ -266,7 +266,23 @@ function wml_actions.lua(cfg)
 end
 
 function wml_actions.music(cfg)
-	wesnoth.set_music(cfg)
+	if cfg.play_once then
+		wesnoth.playlist.play(cfg.name)
+	else
+		if not cfg.append then
+			if cfg.immediate then
+				wesnoth.playlist.current.once = true
+			end
+			wesnoth.playlist.clear()
+		end
+		wesnoth.playlist.add(cfg.name, not not cfg.immediate, cfg.ms_before or 0, cfg.ms_after or 0)
+		if cfg.shuffle == false then
+			wesnoth.playlist[#wesnoth.playlist].shuffle = false
+		end
+		if cfg.title ~= nil then
+			wesnoth.playlist[#wesnoth.playlist].title = cfg.title
+		end
+	end
 end
 
 -- This is mainly for use in unit test macros, but maybe it can be useful elsewhere too

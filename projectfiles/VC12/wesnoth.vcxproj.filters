@@ -1527,6 +1527,9 @@
     <ClCompile Include="..\..\src\formula\variant_value.cpp">
       <Filter>Formula</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\scripting\lua_audio.cpp">
+      <Filter>Scripting</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\addon\client.hpp">
@@ -2964,6 +2967,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\formula\variant_value.hpp">
       <Filter>Formula</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\scripting\lua_audio.hpp">
+      <Filter>Scripting</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
