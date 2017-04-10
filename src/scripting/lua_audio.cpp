@@ -88,10 +88,7 @@ static int impl_music_len(lua_State* L) {
 }
 
 static int intf_music_play(lua_State* L) {
-	config cfg = config_of
-		("name", luaL_checkstring(L, 1))
-		("play_once", true);
-	sound::play_music_config(cfg);
+	sound::play_music_once(luaL_checkstring(L, 1));
 	return 0;
 }
 

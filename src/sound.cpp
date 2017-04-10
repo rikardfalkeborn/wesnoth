@@ -483,10 +483,8 @@ void stop_UI_sound() {
 
 void play_music_once(const std::string &file)
 {
-	// Clear list so it's not replayed.
-	current_track_list.clear();
 	current_track = music_track(file);
-	current_track_index = 0;
+	current_track_index = current_track_list.size();
 	play_music();
 }
 
