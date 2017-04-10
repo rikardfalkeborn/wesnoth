@@ -809,7 +809,7 @@ void tree_view_node::select_node(bool expand_parents)
 
 	if(expand_parents) {
 		tree_view_node* root = &get_tree_view().get_root_node();
-		for(tree_view_node* cur = parent_node_; cur != root && cur->is_folded(); cur = cur->parent_node_) {
+		for(tree_view_node* cur = parent_node_; cur != root; cur = cur->parent_node_) {
 			cur->unfold();
 		}
 	}
