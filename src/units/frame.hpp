@@ -30,51 +30,49 @@
 
 class config;
 
-/** All parameters from a frame at a given instant */
-struct frame_parameters
-{
-	frame_parameters();
+template<typename ProgInt, typename ProgReal, typename ProgStr, typename Image>
+struct basic_frame_parameters {
+	basic_frame_parameters();
+	template<typename A, typename B, typename C, typename D>
+	basic_frame_parameters(const basic_frame_parameters<A,B,C,D>&, int);
 
 	int duration;
 
-	image::locator image;
-	image::locator image_diagonal;
+	Image image, image_diagonal;
 
 	std::string image_mod;
-	std::string halo;
 
-	int halo_x;
-	int halo_y;
-
+	ProgStr halo;
+	ProgInt halo_x, halo_y;
 	std::string halo_mod;
-	std::string sound;
-	std::string text;
 
+	std::string sound, text;
 	boost::optional<color_t> text_color;
+
 	boost::optional<color_t> blend_with;
+	ProgReal blend_ratio;
 
-	double blend_ratio;
-	double highlight_ratio;
-	double offset;
-	double submerge;
+	ProgReal highlight_ratio;
+	ProgReal offset, submerge;
 
-	int x;
-	int y;
-	int directional_x;
-	int directional_y;
+	ProgInt x, y, directional_x, directional_y;
 
-	boost::tribool auto_vflip;
-	boost::tribool auto_hflip;
+	boost::tribool auto_vflip, auto_hflip;
 	boost::tribool primary_frame;
 
-	int drawing_layer;
+	ProgInt drawing_layer;
 };
+
+/** All parameters from a frame at a given instant */
+using frame_parameters = basic_frame_parameters<int, double, std::string, image::locator>;
+using builder_frame_parameters = basic_frame_parameters<std::string, std::string, std::string, std::string>;
+using parsed_frame_parameters = basic_frame_parameters<progressive_int, progressive_double, progressive_string, progressive_image>;
 
 /**
  * Easily build frame parameters with the serialized constructors
  */
 class frame_parsed_parameters;
-class frame_builder
+class frame_builder : private builder_frame_parameters
 {
 public:
 	frame_builder();
@@ -102,43 +100,13 @@ public:
 
 private:
 	friend class frame_parsed_parameters;
-
-	int duration_;
-
-	std::string image_;
-	std::string image_diagonal_;
-	std::string image_mod_;
-	std::string halo_;
-	std::string halo_x_;
-	std::string halo_y_;
-	std::string halo_mod_;
-	std::string sound_;
-	std::string text_;
-
-	boost::optional<color_t> text_color_;
-	boost::optional<color_t> blend_with_;
-
-	std::string blend_ratio_;
-	std::string highlight_ratio_;
-	std::string offset_;
-	std::string submerge_;
-	std::string x_;
-	std::string y_;
-	std::string directional_x_;
-	std::string directional_y_;
-
-	boost::tribool auto_vflip_;
-	boost::tribool auto_hflip_;
-	boost::tribool primary_frame_;
-
-	std::string drawing_layer_;
 };
 
 /**
  * Keep most parameters in a separate class to simplify the handling of the large
  * number of parameters between the frame level and animation level.
  */
-class frame_parsed_parameters
+class frame_parsed_parameters : private parsed_frame_parameters
 {
 public:
 	frame_parsed_parameters(const frame_builder& builder = frame_builder(), int override_duration = 0);
@@ -154,46 +122,12 @@ public:
 	/** Getters for the different parameters */
 	const frame_parameters parameters(int current_time) const;
 
-	int duration() const{ return duration_;}
+	int duration() const;
 	bool does_not_change() const;
 	bool need_update() const;
 
 	/** Contents of frame in strings */
 	std::vector<std::string> debug_strings() const;
-
-private:
-	int duration_;
-
-	progressive_image image_;
-	progressive_image image_diagonal_;
-
-	std::string image_mod_;
-
-	progressive_string halo_;
-	progressive_int halo_x_;
-	progressive_int halo_y_;
-
-	std::string halo_mod_;
-	std::string sound_;
-	std::string text_;
-
-	boost::optional<color_t> text_color_;
-	boost::optional<color_t> blend_with_;
-
-	progressive_double blend_ratio_;
-	progressive_double highlight_ratio_;
-	progressive_double offset_;
-	progressive_double submerge_;
-	progressive_int x_;
-	progressive_int y_;
-	progressive_int directional_x_;
-	progressive_int directional_y_;
-
-	boost::tribool auto_vflip_;
-	boost::tribool auto_hflip_;
-	boost::tribool primary_frame_;
-
-	progressive_int drawing_layer_;
 };
 
 /** Describes a unit's animation sequence. */

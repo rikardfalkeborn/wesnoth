@@ -22,7 +22,8 @@
 static lg::log_domain log_engine("engine");
 #define ERR_NG LOG_STREAM(err, log_engine)
 
-frame_parameters::frame_parameters()
+template<>
+frame_parameters::basic_frame_parameters()
 	: duration(0)
 	, halo_x(0)
 	, halo_y(0)
@@ -40,60 +41,64 @@ frame_parameters::frame_parameters()
 	, drawing_layer(display::LAYER_UNIT_DEFAULT - display::LAYER_UNIT_FIRST)
 {}
 
+template<>
+builder_frame_parameters::basic_frame_parameters()
+	: duration(1)
+	, auto_vflip(boost::logic::indeterminate)
+	, auto_hflip(boost::logic::indeterminate)
+	, primary_frame(boost::logic::indeterminate)
+	, drawing_layer(std::to_string(display::LAYER_UNIT_DEFAULT - display::LAYER_UNIT_FIRST))
+{}
+
 frame_builder::frame_builder()
-	: duration_(1)
-	, auto_vflip_(boost::logic::indeterminate)
-	, auto_hflip_(boost::logic::indeterminate)
-	, primary_frame_(boost::logic::indeterminate)
-	, drawing_layer_(std::to_string(display::LAYER_UNIT_DEFAULT - display::LAYER_UNIT_FIRST))
+	: builder_frame_parameters()
 {}
 
 frame_builder::frame_builder(const config& cfg,const std::string& frame_string)
-	: duration_(1)
-	, image_(cfg[frame_string + "image"])
-	, image_diagonal_(cfg[frame_string + "image_diagonal"])
-	, image_mod_(cfg[frame_string + "image_mod"])
-	, halo_(cfg[frame_string + "halo"])
-	, halo_x_(cfg[frame_string + "halo_x"])
-	, halo_y_(cfg[frame_string + "halo_y"])
-	, halo_mod_(cfg[frame_string + "halo_mod"])
-	, sound_(cfg[frame_string + "sound"])
-	, text_(cfg[frame_string + "text"])
-	, blend_ratio_(cfg[frame_string + "blend_ratio"])
-	, highlight_ratio_(cfg[frame_string + "alpha"])
-	, offset_(cfg[frame_string + "offset"])
-	, submerge_(cfg[frame_string + "submerge"])
-	, x_(cfg[frame_string + "x"])
-	, y_(cfg[frame_string + "y"])
-	, directional_x_(cfg[frame_string + "directional_x"])
-	, directional_y_(cfg[frame_string + "directional_y"])
-	, auto_vflip_(boost::logic::indeterminate)
-	, auto_hflip_(boost::logic::indeterminate)
-	, primary_frame_(boost::logic::indeterminate)
-	, drawing_layer_(cfg[frame_string + "layer"])
+	: builder_frame_parameters()
 {
+	using base = builder_frame_parameters;
+	base::image = cfg[frame_string + "image"].str();
+	base::image_diagonal = cfg[frame_string + "image_diagonal"].str();
+	base::image_mod = cfg[frame_string + "image_mod"].str();
+	base::halo = cfg[frame_string + "halo"].str();
+	base::halo_x = cfg[frame_string + "halo_x"].str();
+	base::halo_y = cfg[frame_string + "halo_y"].str();
+	base::halo_mod = cfg[frame_string + "halo_mod"].str();
+	base::sound = cfg[frame_string + "sound"].str();
+	base::text = cfg[frame_string + "text"].str();
+	base::blend_ratio = cfg[frame_string + "blend_ratio"].str();
+	base::highlight_ratio = cfg[frame_string + "alpha"].str();
+	base::offset = cfg[frame_string + "offset"].str();
+	base::submerge = cfg[frame_string + "submerge"].str();
+	base::x = cfg[frame_string + "x"].str();
+	base::y = cfg[frame_string + "y"].str();
+	base::directional_x = cfg[frame_string + "directional_x"].str();
+	base::directional_y = cfg[frame_string + "directional_y"].str();
+	base::drawing_layer = cfg[frame_string + "layer"].str();
+	
 	if(!cfg.has_attribute(frame_string + "auto_vflip")) {
-		auto_vflip_ = boost::logic::indeterminate;
+		base::auto_vflip = boost::logic::indeterminate;
 	} else {
-		auto_vflip_ = cfg[frame_string + "auto_vflip"].to_bool();
+		base::auto_vflip = cfg[frame_string + "auto_vflip"].to_bool();
 	}
 
 	if(!cfg.has_attribute(frame_string + "auto_hflip")) {
-		auto_hflip_ = boost::logic::indeterminate;
+		base::auto_hflip = boost::logic::indeterminate;
 	} else {
-		auto_hflip_ = cfg[frame_string + "auto_hflip"].to_bool();
+		base::auto_hflip = cfg[frame_string + "auto_hflip"].to_bool();
 	}
 
 	if(!cfg.has_attribute(frame_string + "primary")) {
-		primary_frame_ = boost::logic::indeterminate;
+		base::primary_frame = boost::logic::indeterminate;
 	} else {
-		primary_frame_ = cfg[frame_string + "primary"].to_bool();
+		base::primary_frame = cfg[frame_string + "primary"].to_bool();
 	}
 
 	std::vector<std::string> color = utils::split(cfg[frame_string + "text_color"]);
 	if(color.size() == 3) {
 		try {
-			text_color_ = color_t(std::stoi(color[0]), std::stoi(color[1]), std::stoi(color[2]));
+			text_color = color_t(std::stoi(color[0]), std::stoi(color[1]), std::stoi(color[2]));
 		} catch(std::invalid_argument) {
 			ERR_NG << "Invalid RGB color value in unit animation: " << color[0] << ", " << color[1] << ", " << color[2] << "\n";
 		}
@@ -102,21 +107,21 @@ frame_builder::frame_builder(const config& cfg,const std::string& frame_string)
 	if(const config::attribute_value* v = cfg.get(frame_string + "duration")) {
 		duration(*v);
 	} else if(!cfg.get(frame_string + "end")) {
-		int halo_duration = (progressive_string(halo_, 1)).duration();
-		int image_duration = (progressive_image(image_, 1)).duration();
-		int image_diagonal_duration = (progressive_image(image_diagonal_, 1)).duration();
+		int halo_duration = (progressive_string(base::halo, 1)).duration();
+		int image_duration = (progressive_image(base::image, 1)).duration();
+		int image_diagonal_duration = (progressive_image(base::image_diagonal, 1)).duration();
 
 		duration(std::max(std::max(image_duration, image_diagonal_duration), halo_duration));
 	} else {
 		duration(cfg[frame_string + "end"].to_int() - cfg[frame_string + "begin"].to_int());
 	}
 
-	duration_ = std::max(duration_, 1);
+	base::duration = std::max(base::duration, 1);
 
 	color = utils::split(cfg[frame_string + "blend_color"]);
 	if(color.size() == 3) {
 		try {
-			blend_with_ = color_t(std::stoi(color[0]), std::stoi(color[1]), std::stoi(color[2]));
+			base::blend_with = color_t(std::stoi(color[0]), std::stoi(color[1]), std::stoi(color[2]));
 		} catch(std::invalid_argument) {
 			ERR_NG << "Invalid RGB color value in unit animation: " << color[0] << ", " << color[1] << ", " << color[2] << "\n";
 		}
@@ -125,163 +130,173 @@ frame_builder::frame_builder(const config& cfg,const std::string& frame_string)
 
 frame_builder& frame_builder::image(const std::string& image ,const std::string&  image_mod)
 {
-	image_ = image;
-	image_mod_ = image_mod;
+	builder_frame_parameters::image = image;
+	builder_frame_parameters::image_mod = image_mod;
 	return *this;
 }
 
 frame_builder& frame_builder::image_diagonal(const std::string& image_diagonal,const std::string& image_mod)
 {
-	image_diagonal_ = image_diagonal;
-	image_mod_ = image_mod;
+	builder_frame_parameters::image_diagonal = image_diagonal;
+	builder_frame_parameters::image_mod = image_mod;
 	return *this;
 }
 
 frame_builder& frame_builder::sound(const std::string& sound)
 {
-	sound_ = sound;
+	builder_frame_parameters::sound = sound;
 	return *this;
 }
 
 frame_builder& frame_builder::text(const std::string& text,const color_t text_color)
 {
-	text_ = text;
-	text_color_ = text_color;
+	builder_frame_parameters::text = text;
+	builder_frame_parameters::text_color = text_color;
 	return *this;
 }
 
 frame_builder& frame_builder::halo(const std::string& halo, const std::string& halo_x, const std::string& halo_y,const std::string&  halo_mod)
 {
-	halo_ = halo;
-	halo_x_ = halo_x;
-	halo_y_ = halo_y;
-	halo_mod_= halo_mod;
+	builder_frame_parameters::halo = halo;
+	builder_frame_parameters::halo_x = halo_x;
+	builder_frame_parameters::halo_y = halo_y;
+	builder_frame_parameters::halo_mod = halo_mod;
 	return *this;
 }
 
 frame_builder& frame_builder::duration(const int duration)
 {
-	duration_ = duration;
+	builder_frame_parameters::duration = duration;
 	return *this;
 }
 
 frame_builder& frame_builder::blend(const std::string& blend_ratio,const color_t blend_color)
 {
-	blend_with_ = blend_color;
-	blend_ratio_ = blend_ratio;
+	builder_frame_parameters::blend_with = blend_color;
+	builder_frame_parameters::blend_ratio = blend_ratio;
 	return *this;
 }
 
 frame_builder& frame_builder::highlight(const std::string& highlight)
 {
-	highlight_ratio_ = highlight;
+	builder_frame_parameters::highlight_ratio = highlight;
 	return *this;
 }
 
 frame_builder& frame_builder::offset(const std::string& offset)
 {
-	offset_ = offset;
+	builder_frame_parameters::offset = offset;
 	return *this;
 }
 
 frame_builder& frame_builder::submerge(const std::string& submerge)
 {
-	submerge_ = submerge;
+	builder_frame_parameters::submerge = submerge;
 	return *this;
 }
 
 frame_builder& frame_builder::x(const std::string& x)
 {
-	x_ = x;
+	builder_frame_parameters::x = x;
 	return *this;
 }
 
 frame_builder& frame_builder::y(const std::string& y)
 {
-	y_ = y;
+	builder_frame_parameters::y = y;
 	return *this;
 }
 
 frame_builder& frame_builder::directional_x(const std::string& directional_x)
 {
-	directional_x_ = directional_x;
+	builder_frame_parameters::directional_x = directional_x;
 	return *this;
 }
 
 frame_builder& frame_builder::directional_y(const std::string& directional_y)
 {
-	directional_y_ = directional_y;
+	builder_frame_parameters::directional_y = directional_y;
 	return *this;
 }
 
 frame_builder& frame_builder::auto_vflip(const bool auto_vflip)
 {
-	auto_vflip_ = auto_vflip;
+	builder_frame_parameters::auto_vflip = auto_vflip;
 	return *this;
 }
 
 frame_builder& frame_builder::auto_hflip(const bool auto_hflip)
 {
-	auto_hflip_ = auto_hflip;
+	builder_frame_parameters::auto_hflip = auto_hflip;
 	return *this;
 }
 
 frame_builder& frame_builder::primary_frame(const bool primary_frame)
 {
-	primary_frame_ = primary_frame;
+	builder_frame_parameters::primary_frame = primary_frame;
 	return *this;
 }
 
 frame_builder& frame_builder::drawing_layer(const std::string& drawing_layer)
 {
-	drawing_layer_=drawing_layer;
+	builder_frame_parameters::drawing_layer = drawing_layer;
 	return *this;
 }
 
-frame_parsed_parameters::frame_parsed_parameters(const frame_builder& builder, int duration)
-	: duration_(duration ? duration : builder.duration_)
-	, image_(builder.image_,duration_)
-	, image_diagonal_(builder.image_diagonal_,duration_)
-	, image_mod_(builder.image_mod_)
-	, halo_(builder.halo_,duration_)
-	, halo_x_(builder.halo_x_,duration_)
-	, halo_y_(builder.halo_y_,duration_)
-	, halo_mod_(builder.halo_mod_)
-	, sound_(builder.sound_)
-	, text_(builder.text_)
-	, text_color_(builder.text_color_)
-	, blend_with_(builder.blend_with_)
-	, blend_ratio_(builder.blend_ratio_,duration_)
-	, highlight_ratio_(builder.highlight_ratio_,duration_)
-	, offset_(builder.offset_,duration_)
-	, submerge_(builder.submerge_,duration_)
-	, x_(builder.x_,duration_)
-	, y_(builder.y_,duration_)
-	, directional_x_(builder.directional_x_,duration_)
-	, directional_y_(builder.directional_y_,duration_)
-	, auto_vflip_(builder.auto_vflip_)
-	, auto_hflip_(builder.auto_hflip_)
-	, primary_frame_(builder.primary_frame_)
-	, drawing_layer_(builder.drawing_layer_,duration_)
+template<> template<>
+parsed_frame_parameters::basic_frame_parameters(const builder_frame_parameters& builder, int duration)
+	: duration(duration ? duration : builder.duration)
+	, image(builder.image, duration)
+	, image_diagonal(builder.image_diagonal, duration)
+	, image_mod(builder.image_mod)
+	, halo(builder.halo, duration)
+	, halo_x(builder.halo_x, duration)
+	, halo_y(builder.halo_y, duration)
+	, halo_mod(builder.halo_mod)
+	, sound(builder.sound)
+	, text(builder.text)
+	, text_color(builder.text_color)
+	, blend_with(builder.blend_with)
+	, blend_ratio(builder.blend_ratio, duration)
+	, highlight_ratio(builder.highlight_ratio, duration)
+	, offset(builder.offset, duration)
+	, submerge(builder.submerge, duration)
+	, x(builder.x, duration)
+	, y(builder.y, duration)
+	, directional_x(builder.directional_x, duration)
+	, directional_y(builder.directional_y, duration)
+	, auto_vflip(builder.auto_vflip)
+	, auto_hflip(builder.auto_hflip)
+	, primary_frame(builder.primary_frame)
+	, drawing_layer(builder.drawing_layer, duration)
 {}
+
+frame_parsed_parameters::frame_parsed_parameters(const frame_builder& builder, int duration)
+	: parsed_frame_parameters(builder, duration)
+{}
+
+int frame_parsed_parameters::duration() const
+{
+	return parsed_frame_parameters::duration;
+}
 
 bool frame_parsed_parameters::does_not_change() const
 {
 	return
-		image_.does_not_change() &&
-		image_diagonal_.does_not_change() &&
-		halo_.does_not_change() &&
-		halo_x_.does_not_change() &&
-		halo_y_.does_not_change() &&
-		blend_ratio_.does_not_change() &&
-		highlight_ratio_.does_not_change() &&
-		offset_.does_not_change() &&
-		submerge_.does_not_change() &&
-		x_.does_not_change() &&
-		y_.does_not_change() &&
-		directional_x_.does_not_change() &&
-		directional_y_.does_not_change() &&
-		drawing_layer_.does_not_change();
+		image.does_not_change() &&
+		image_diagonal.does_not_change() &&
+		halo.does_not_change() &&
+		halo_x.does_not_change() &&
+		halo_y.does_not_change() &&
+		blend_ratio.does_not_change() &&
+		highlight_ratio.does_not_change() &&
+		offset.does_not_change() &&
+		submerge.does_not_change() &&
+		x.does_not_change() &&
+		y.does_not_change() &&
+		directional_x.does_not_change() &&
+		directional_y.does_not_change() &&
+		drawing_layer.does_not_change();
 }
 
 bool frame_parsed_parameters::need_update() const
@@ -292,82 +307,82 @@ bool frame_parsed_parameters::need_update() const
 const frame_parameters frame_parsed_parameters::parameters(int current_time) const
 {
 	frame_parameters result;
-	result.duration = duration_;
-	result.image = image_.get_current_element(current_time);
-	result.image_diagonal = image_diagonal_.get_current_element(current_time);
-	result.image_mod = image_mod_;
-	result.halo = halo_.get_current_element(current_time);
-	result.halo_x = halo_x_.get_current_element(current_time);
-	result.halo_y = halo_y_.get_current_element(current_time);
-	result.halo_mod = halo_mod_;
-	result.sound = sound_;
-	result.text = text_;
-	result.text_color = text_color_;
-	result.blend_with = blend_with_;
-	result.blend_ratio = blend_ratio_.get_current_element(current_time);
-	result.highlight_ratio = highlight_ratio_.get_current_element(current_time,1.0);
-	result.offset = offset_.get_current_element(current_time,-1000);
-	result.submerge = submerge_.get_current_element(current_time);
-	result.x = x_.get_current_element(current_time);
-	result.y = y_.get_current_element(current_time);
-	result.directional_x = directional_x_.get_current_element(current_time);
-	result.directional_y = directional_y_.get_current_element(current_time);
-	result.auto_vflip = auto_vflip_;
-	result.auto_hflip = auto_hflip_;
-	result.primary_frame = primary_frame_;
-	result.drawing_layer = drawing_layer_.get_current_element(current_time,display::LAYER_UNIT_DEFAULT-display::LAYER_UNIT_FIRST);
+	result.duration = parsed_frame_parameters::duration;
+	result.image = image.get_current_element(current_time);
+	result.image_diagonal = image_diagonal.get_current_element(current_time);
+	result.image_mod = image_mod;
+	result.halo = halo.get_current_element(current_time);
+	result.halo_x = halo_x.get_current_element(current_time);
+	result.halo_y = halo_y.get_current_element(current_time);
+	result.halo_mod = halo_mod;
+	result.sound = sound;
+	result.text = text;
+	result.text_color = text_color;
+	result.blend_with = blend_with;
+	result.blend_ratio = blend_ratio.get_current_element(current_time);
+	result.highlight_ratio = highlight_ratio.get_current_element(current_time,1.0);
+	result.offset = offset.get_current_element(current_time,-1000);
+	result.submerge = submerge.get_current_element(current_time);
+	result.x = x.get_current_element(current_time);
+	result.y = y.get_current_element(current_time);
+	result.directional_x = directional_x.get_current_element(current_time);
+	result.directional_y = directional_y.get_current_element(current_time);
+	result.auto_vflip = auto_vflip;
+	result.auto_hflip = auto_hflip;
+	result.primary_frame = primary_frame;
+	result.drawing_layer = drawing_layer.get_current_element(current_time,display::LAYER_UNIT_DEFAULT-display::LAYER_UNIT_FIRST);
 	return result;
 }
 
-void frame_parsed_parameters::override(int duration,
-		const std::string& highlight,
-		const std::string& blend_ratio,
-		color_t blend_color,
-		const std::string& offset,
-		const std::string& layer,
-		const std::string& modifiers)
+void frame_parsed_parameters::override(int new_duration,
+		const std::string& new_highlight,
+		const std::string& new_blend_ratio,
+		color_t new_blend_color,
+		const std::string& new_offset,
+		const std::string& new_layer,
+		const std::string& new_modifiers)
 {
-	if(!highlight.empty()) {
-		highlight_ratio_ = progressive_double(highlight,duration);
-	} else if(duration != duration_){
-		highlight_ratio_ = progressive_double(highlight_ratio_.get_original(),duration);
+	if(!new_highlight.empty()) {
+		highlight_ratio = progressive_double(new_highlight, new_duration);
+	} else if(new_duration != parsed_frame_parameters::duration) {
+		highlight_ratio = progressive_double(highlight_ratio.get_original(), new_duration);
 	}
 
-	if(!offset.empty()) {
-		offset_ = progressive_double(offset,duration);
-	} else if(duration != duration_){
-		offset_ = progressive_double(offset_.get_original(),duration);
+	if(!new_offset.empty()) {
+		offset = progressive_double(new_offset, new_duration);
+	} else if(new_duration != parsed_frame_parameters::duration) {
+		offset = progressive_double(offset.get_original(), new_duration);
 	}
 
-	if(!blend_ratio.empty()) {
-		blend_ratio_ = progressive_double(blend_ratio,duration);
-		blend_with_  = blend_color;
-	} else if(duration != duration_){
-		blend_ratio_ = progressive_double(blend_ratio_.get_original(),duration);
+	if(!new_blend_ratio.empty()) {
+		blend_ratio = progressive_double(new_blend_ratio, new_duration);
+		blend_with = new_blend_color;
+	} else if(new_duration != parsed_frame_parameters::duration) {
+		blend_ratio = progressive_double(blend_ratio.get_original(), new_duration);
 	}
 
-	if(!layer.empty()) {
-		drawing_layer_ = progressive_int(layer,duration);
-	} else if(duration != duration_){
-		drawing_layer_ = progressive_int(drawing_layer_.get_original(),duration);
+	if(!new_layer.empty()) {
+		drawing_layer = progressive_int(new_layer, new_duration);
+	} else if(new_duration != parsed_frame_parameters::duration) {
+		drawing_layer = progressive_int(drawing_layer.get_original(), new_duration);
 	}
 
-	if(!modifiers.empty()) {
-		image_mod_ += modifiers;
+	if(!new_modifiers.empty()) {
+		image_mod += new_modifiers;
 	}
 
-	if(duration != duration_) {
-		image_ = progressive_image(image_.get_original(), duration);
-		image_diagonal_ = progressive_image(image_diagonal_.get_original(), duration);
-		halo_ = progressive_string(halo_.get_original(), duration);
-		halo_x_ = progressive_int(halo_x_.get_original(), duration);
-		halo_y_ = progressive_int(halo_y_.get_original(), duration);
-		submerge_ = progressive_double(submerge_.get_original(), duration);
-		x_ = progressive_int(x_.get_original(), duration);
-		y_ = progressive_int(y_.get_original(), duration);
-		directional_x_ = progressive_int(directional_x_.get_original(), duration);
-		directional_y_ = progressive_int(directional_y_.get_original(), duration);
-		duration_ = duration;
+	if(new_duration != parsed_frame_parameters::duration) {
+		image = progressive_image(image.get_original(), new_duration);
+		image_diagonal = progressive_image(image_diagonal.get_original(), new_duration);
+		halo = progressive_string(halo.get_original(), new_duration);
+		halo_x = progressive_int(halo_x.get_original(), new_duration);
+		halo_y = progressive_int(halo_y.get_original(), new_duration);
+		submerge = progressive_double(submerge.get_original(), new_duration);
+		x = progressive_int(x.get_original(), new_duration);
+		y = progressive_int(y.get_original(), new_duration);
+		directional_x = progressive_int(directional_x.get_original(), new_duration);
+		directional_y = progressive_int(directional_y.get_original(), new_duration);
+		parsed_frame_parameters::duration = new_duration;
 	}
 }
 
@@ -375,100 +390,100 @@ std::vector<std::string> frame_parsed_parameters::debug_strings() const
 {
 	std::vector<std::string> v;
 
-	if(duration_ > 0) {
-		v.push_back("duration=" + utils::half_signed_value(duration_));
+	if(parsed_frame_parameters::duration > 0) {
+		v.push_back("duration=" + utils::half_signed_value(parsed_frame_parameters::duration));
 	}
 
-	if(!image_.get_original().empty()) {
-		v.push_back("image=" + image_.get_original());
+	if(!image.get_original().empty()) {
+		v.push_back("image=" + image.get_original());
 	}
 
-	if(!image_diagonal_.get_original().empty()) {
-		v.push_back("image_diagonal=" + image_diagonal_.get_original());
+	if(!image_diagonal.get_original().empty()) {
+		v.push_back("image_diagonal=" + image_diagonal.get_original());
 	}
 
-	if(!image_mod_.empty()) {
-		v.push_back("image_mod=" + image_mod_);
+	if(!image_mod.empty()) {
+		v.push_back("image_mod=" + image_mod);
 	}
 
-	if(!halo_.get_original().empty()) {
-		v.push_back("halo=" + halo_.get_original());
+	if(!halo.get_original().empty()) {
+		v.push_back("halo=" + halo.get_original());
 	}
 
-	if(!halo_x_.get_original().empty()) {
-		v.push_back("halo_x=" + halo_x_.get_original());
+	if(!halo_x.get_original().empty()) {
+		v.push_back("halo_x=" + halo_x.get_original());
 	}
 
-	if(!halo_y_.get_original().empty()) {
-		v.push_back("halo_y=" + halo_y_.get_original());
+	if(!halo_y.get_original().empty()) {
+		v.push_back("halo_y=" + halo_y.get_original());
 	}
 
-	if(!halo_mod_.empty()) {
-		v.push_back("halo_mod=" + halo_mod_);
+	if(!halo_mod.empty()) {
+		v.push_back("halo_mod=" + halo_mod);
 	}
 
-	if(!sound_.empty()) {
-		v.push_back("sound=" + sound_);
+	if(!sound.empty()) {
+		v.push_back("sound=" + sound);
 	}
 
-	if(!text_.empty()) {
-		v.push_back("text=" + text_);
+	if(!text.empty()) {
+		v.push_back("text=" + text);
 
-		if(text_color_) {
-			v.push_back("text_color=" + text_color_->to_rgba_string());
+		if(text_color) {
+			v.push_back("text_color=" + text_color->to_rgba_string());
 		}
 	}
 
-	if(!blend_ratio_.get_original().empty()) {
-		v.push_back("blend_ratio=" + blend_ratio_.get_original());
+	if(!blend_ratio.get_original().empty()) {
+		v.push_back("blend_ratio=" + blend_ratio.get_original());
 
-		if(blend_with_) {
-			v.push_back("blend_with=" + blend_with_->to_rgba_string());
+		if(blend_with) {
+			v.push_back("blend_with=" + blend_with->to_rgba_string());
 		}
 	}
 
-	if(!highlight_ratio_.get_original().empty()) {
-		v.push_back("highlight_ratio=" + highlight_ratio_.get_original());
+	if(!highlight_ratio.get_original().empty()) {
+		v.push_back("highlight_ratio=" + highlight_ratio.get_original());
 	}
 
-	if(!offset_.get_original().empty()) {
-		v.push_back("offset=" + offset_.get_original());
+	if(!offset.get_original().empty()) {
+		v.push_back("offset=" + offset.get_original());
 	}
 
-	if(!submerge_.get_original().empty()) {
-		v.push_back("submerge=" + submerge_.get_original());
+	if(!submerge.get_original().empty()) {
+		v.push_back("submerge=" + submerge.get_original());
 	}
 
-	if(!x_.get_original().empty()) {
-		v.push_back("x=" + x_.get_original());
+	if(!x.get_original().empty()) {
+		v.push_back("x=" + x.get_original());
 	}
 
-	if(!y_.get_original().empty()) {
-		v.push_back("y=" + y_.get_original());
+	if(!y.get_original().empty()) {
+		v.push_back("y=" + y.get_original());
 	}
 
-	if(!directional_x_.get_original().empty()) {
-		v.push_back("directional_x=" + directional_x_.get_original());
+	if(!directional_x.get_original().empty()) {
+		v.push_back("directional_x=" + directional_x.get_original());
 	}
 
-	if(!directional_y_.get_original().empty()) {
-		v.push_back("directional_y=" + directional_y_.get_original());
+	if(!directional_y.get_original().empty()) {
+		v.push_back("directional_y=" + directional_y.get_original());
 	}
 
-	if(!boost::indeterminate(auto_vflip_)) {
-		v.push_back("auto_vflip=" + std::string(auto_vflip_ ? "true" : "false"));
+	if(!boost::indeterminate(auto_vflip)) {
+		v.push_back("auto_vflip=" + std::string(auto_vflip ? "true" : "false"));
 	}
 
-	if(!boost::indeterminate(auto_hflip_)) {
-		v.push_back("auto_hflip=" + std::string(auto_hflip_ ? "true" : "false"));
+	if(!boost::indeterminate(auto_hflip)) {
+		v.push_back("auto_hflip=" + std::string(auto_hflip ? "true" : "false"));
 	}
 
-	if(!boost::indeterminate(primary_frame_)) {
-		v.push_back("primary_frame=" + std::string(primary_frame_ ? "true" : "false"));
+	if(!boost::indeterminate(primary_frame)) {
+		v.push_back("primary_frame=" + std::string(primary_frame ? "true" : "false"));
 	}
 
-	if(!drawing_layer_.get_original().empty()) {
-		v.push_back("drawing_layer=" + drawing_layer_.get_original());
+	if(!drawing_layer.get_original().empty()) {
+		v.push_back("drawing_layer=" + drawing_layer.get_original());
 	}
 
 	return v;
